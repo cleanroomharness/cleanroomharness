@@ -1,0 +1,28 @@
+[project]
+name = "cleanroom-harness"
+version = "0.1.0"
+description = "A clean-room, company-portable open-source AI systems harness for regulated enterprise and government workflows."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "Apache-2.0" }
+
+[project.urls]
+Homepage = "https://cleanroomharness.com"
+Repository = "https://github.com/cleanroomharness/cleanroomharness"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

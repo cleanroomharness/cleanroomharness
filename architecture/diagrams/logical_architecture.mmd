@@ -1,0 +1,15 @@
+flowchart TD
+    client["User / App / Agent / Analyst"] --> api["FastAPI API + Streaming Layer"]
+
+    api --> policy["Policy Gate<br/>AuthN/AuthZ · PII/PHI/CUI guardrails<br/>prompt-injection checks · tool approval<br/>data-boundary enforcement"]
+
+    policy --> gateway["LiteLLM Model Gateway"]
+    gateway --> ollama["Local Ollama models"]
+    gateway --> cloud["OpenAI-compatible / Azure OpenAI /<br/>Anthropic / Bedrock / Gemini"]
+    gateway --> gov["Government-approved endpoints"]
+
+    policy --> retrieval["Retrieval Layer<br/>Postgres + pgvector · Qdrant (optional)<br/>metadata · source citations"]
+
+    policy --> toolslayer["Tool / Connector Layer<br/>MCP-style adapters · dry-run first<br/>human approval before side effects"]
+
+    api --> obs["Observability + Evaluation<br/>OpenTelemetry · audit_events<br/>eval contracts · regression tests"]
