@@ -22,3 +22,6 @@ build/
 .DS_Store
 .idea/
 .vscode/
+
+# Local assistant/session artifacts
+.claude/
