@@ -9,6 +9,13 @@ model_list:
       model: ollama/llama3.2:3b
       api_base: http://host.docker.internal:11434
 
+  # Route any locally pulled Ollama model (still in-boundary). Regulated
+  # deployments should replace wildcards with an explicit approved list.
+  - model_name: ollama/*
+    litellm_params:
+      model: ollama/*
+      api_base: http://host.docker.internal:11434
+
   # Examples for additional providers (uncomment and configure per deployment):
   #
   # - model_name: claude-sonnet
@@ -24,3 +31,6 @@ model_list:
 
 litellm_settings:
   drop_params: true
+  # No outbound telemetry — required posture for air-gapped/regulated
+  # deployments.
+  telemetry: false

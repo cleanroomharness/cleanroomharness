@@ -1,4 +1,4 @@
-.PHONY: up down logs dev mcp test lint fmt check k8s-validate deploy-k3s deploy-k8s
+.PHONY: up down logs dev mcp test lint fmt check k8s-validate deploy-k3s deploy-k8s airgap-bundle
 
 up:
 	docker compose up --build
@@ -38,3 +38,6 @@ deploy-k3s:
 
 deploy-k8s:
 	kubectl apply -k infra/k8s/overlays/k8s
+
+airgap-bundle:
+	bash scripts/build_airgap_bundle.sh

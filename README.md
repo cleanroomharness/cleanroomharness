@@ -117,6 +117,8 @@ curl -X POST http://localhost:8080/tools/dry-run \
 
 The K3s and K8s paths share one kustomize base; overlays differ only in ingress, replicas, and image source. See [infra/k8s/README.md](infra/k8s/README.md) — including the note on replacing the dev-only secret generator before any real deployment.
 
+**Air-gapped environments:** the stack runs fully disconnected — image tags are pinned, Qdrant/LiteLLM telemetry is disabled, and the API makes no external calls. `make airgap-bundle` builds a checksummed transfer bundle (images + import instructions) on a connected host; see the air-gapped section of [infra/k8s/README.md](infra/k8s/README.md).
+
 ## MCP server
 
 The harness tools are also available over the [Model Context Protocol](https://modelcontextprotocol.io) for MCP clients like Claude Code and Claude Desktop:

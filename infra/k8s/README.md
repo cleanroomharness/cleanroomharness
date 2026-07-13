@@ -31,10 +31,27 @@ curl http://harness.local/health
 kubectl -n cleanroom-harness port-forward svc/api 8080:8080
 ```
 
-**Air-gapped notes:** pre-pull `ghcr.io/berriai/litellm:main-stable`,
-`pgvector/pgvector:pg16`, `qdrant/qdrant`, and `redis:7-alpine` the same way
-(`docker save | k3s ctr images import -`), and point the LiteLLM config only
-at in-boundary model endpoints (e.g. an Ollama service inside the cluster).
+## Air-gapped deployment
+
+The stack is built to run fully disconnected:
+
+- **No phone-home.** Qdrant telemetry is disabled (`QDRANT__TELEMETRY_DISABLED`), LiteLLM telemetry is off in `files/litellm-config.yaml`, and the API makes no external calls. OpenTelemetry defaults to console output; point OTLP only at an in-boundary collector.
+- **Pinned images.** All image tags are pinned versions (no `latest`/`main-stable`), so the bundle you scanned is the bundle you run.
+- **Transfer bundle.** On a connected host:
+
+  ```bash
+  make airgap-bundle   # builds the API image, pulls pinned images,
+                       # saves tarballs + SHA256SUMS + IMPORT.md to dist/airgap/
+  ```
+
+  Carry `dist/airgap/` across the boundary and follow its `IMPORT.md`:
+  verify checksums, `k3s ctr images import` (or `docker load` /
+  in-boundary registry push), copy the Ollama model store
+  (`~/.ollama/models` after `ollama pull llama3.2:3b` on the connected
+  host), then `kubectl apply -k infra/k8s/overlays/k3s` or
+  `docker compose up --no-build`.
+
+- **Models stay inside.** Keep the LiteLLM model list pointing only at in-boundary endpoints (e.g. an Ollama service inside the cluster). Adding an external provider is a config change that should go through your change-control process.
 
 ## Generic Kubernetes (enterprise)
 

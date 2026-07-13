@@ -1,5 +1,8 @@
 services:
   api:
+    # Named image so air-gapped hosts can `docker load` the bundle and run
+    # `docker compose up --no-build` (see scripts/build_airgap_bundle.sh).
+    image: cleanroom-harness-api:0.1.0
     build: .
     ports:
       - "8080:8080"
@@ -17,7 +20,7 @@ services:
       - redis
 
   litellm:
-    image: ghcr.io/berriai/litellm:main-stable
+    image: ghcr.io/berriai/litellm:main-v1.66.0-stable
     command: ["--config", "/etc/litellm/config.yaml", "--port", "4000"]
     ports:
       - "4000:4000"
@@ -29,7 +32,7 @@ services:
       - "host.docker.internal:host-gateway"
 
   postgres:
-    image: pgvector/pgvector:pg16
+    image: pgvector/pgvector:0.8.5-pg16
     environment:
       POSTGRES_USER: cleanroom
       POSTGRES_PASSWORD: cleanroom
@@ -41,14 +44,16 @@ services:
       - pgdata:/var/lib/postgresql/data
 
   qdrant:
-    image: qdrant/qdrant:latest
+    image: qdrant/qdrant:v1.18.2
+    environment:
+      QDRANT__TELEMETRY_DISABLED: "true"
     ports:
       - "6333:6333"
     volumes:
       - qdrantdata:/qdrant/storage
 
   redis:
-    image: redis:7-alpine
+    image: redis:7.4.9-alpine
     ports:
       - "6379:6379"
 
