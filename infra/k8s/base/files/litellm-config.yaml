@@ -1,0 +1,26 @@
+# LiteLLM proxy configuration.
+# Local default is an Ollama model; add cloud or government-approved
+# endpoints per deployment. Never commit real keys — use environment
+# variables (os.environ/...) for anything sensitive.
+
+model_list:
+  - model_name: ollama/llama3.2:3b
+    litellm_params:
+      model: ollama/llama3.2:3b
+      api_base: http://host.docker.internal:11434
+
+  # Examples for additional providers (uncomment and configure per deployment):
+  #
+  # - model_name: claude-sonnet
+  #   litellm_params:
+  #     model: anthropic/claude-sonnet-5
+  #     api_key: os.environ/ANTHROPIC_API_KEY
+  #
+  # - model_name: azure-gpt
+  #   litellm_params:
+  #     model: azure/<deployment-name>
+  #     api_base: os.environ/AZURE_API_BASE
+  #     api_key: os.environ/AZURE_API_KEY
+
+litellm_settings:
+  drop_params: true

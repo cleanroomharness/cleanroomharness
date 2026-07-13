@@ -26,5 +26,10 @@ jobs:
       - name: Clean-room check
         run: bash scripts/check_clean_room.sh
 
+      - name: Validate Kubernetes manifests
+        run: |
+          kubectl kustomize infra/k8s/overlays/k3s > /dev/null
+          kubectl kustomize infra/k8s/overlays/k8s > /dev/null
+
       - name: Tests
         run: pytest

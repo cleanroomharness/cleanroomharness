@@ -1,0 +1,23 @@
+# Generic Kubernetes overlay: multi-node clusters (EKS/AKS/GKE/on-prem).
+# Scales the API out and points the image at a real registry.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+  - ingress.yaml
+
+patches:
+  - target:
+      kind: Deployment
+      name: api
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 2
+
+# Point at the registry your cluster pulls from:
+# images:
+#   - name: cleanroom-harness-api
+#     newName: registry.example.com/cleanroom-harness-api
+#     newTag: "0.1.0"

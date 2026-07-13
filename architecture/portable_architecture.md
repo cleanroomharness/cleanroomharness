@@ -56,4 +56,4 @@ propose -> validate(arguments)          # no external contact
 | Secrets | `.env` (never committed) | Secret manager / vault |
 | Data | Synthetic only | Classified per company policy, private repo |
 | Observability | Console exporter | OTLP collector + Langfuse/Phoenix |
-| Deployment | Docker Compose | Kubernetes/Helm, IaC, network isolation |
+| Deployment | Docker Compose | K3s (edge/air-gapped) or K8s via `infra/k8s/` kustomize overlays |

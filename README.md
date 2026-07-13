@@ -107,6 +107,16 @@ curl -X POST http://localhost:8080/tools/dry-run \
   -d '{"tool": "demo_ticket", "arguments": {"title": "Synthetic demo ticket"}}'
 ```
 
+## Deployment options
+
+| Tier | How | When |
+|------|-----|------|
+| **Lean** | `docker compose up --build` | Local development, demos |
+| **K3s** | `make deploy-k3s` | Single node, edge, air-gapped, small regulated environments |
+| **K8s** | `make deploy-k8s` | Multi-node enterprise clusters (EKS/AKS/GKE/on-prem) |
+
+The K3s and K8s paths share one kustomize base; overlays differ only in ingress, replicas, and image source. See [infra/k8s/README.md](infra/k8s/README.md) — including the note on replacing the dev-only secret generator before any real deployment.
+
 ## MCP server
 
 The harness tools are also available over the [Model Context Protocol](https://modelcontextprotocol.io) for MCP clients like Claude Code and Claude Desktop:

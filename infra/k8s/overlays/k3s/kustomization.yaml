@@ -1,0 +1,9 @@
+# K3s overlay: single-node / edge / air-gap-friendly.
+# Uses K3s defaults: Traefik ingress and the local-path storage class
+# (default, so PVCs need no storageClassName).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+  - ingress.yaml
