@@ -1,4 +1,4 @@
-.PHONY: up down logs dev test lint fmt check
+.PHONY: up down logs dev mcp test lint fmt check
 
 up:
 	docker compose up --build
@@ -11,6 +11,9 @@ logs:
 
 dev:
 	uvicorn app.main:app --reload --port 8080
+
+mcp:
+	python -m connectors.mcp.server
 
 test:
 	pytest

@@ -6,18 +6,11 @@ from pydantic import BaseModel, Field
 from app.security import require_api_key
 from app.services import audit_service
 from app.services.policy_service import PolicyAction, evaluate
+from app.services.tool_registry import get_registry
 from app.settings import get_settings
-from connectors.examples.demo_ticket_tool import DemoTicketTool
-from connectors.examples.echo_tool import EchoTool
 from connectors.interfaces.tool_contract import ToolContract
 
 router = APIRouter(prefix="/tools", tags=["tools"], dependencies=[Depends(require_api_key)])
-
-# Public registry holds neutral example tools only. Company-specific
-# connectors register their own tools in private forks.
-_REGISTRY: dict[str, ToolContract] = {
-    tool.name: tool for tool in (EchoTool(), DemoTicketTool())
-}
 
 
 class ToolRequest(BaseModel):
@@ -29,7 +22,7 @@ class ToolRequest(BaseModel):
 
 
 def _get_tool(name: str) -> ToolContract:
-    tool = _REGISTRY.get(name)
+    tool = get_registry().get(name)
     if tool is None:
         raise HTTPException(status_code=404, detail=f"unknown tool '{name}'")
     return tool
@@ -40,7 +33,7 @@ async def list_tools() -> dict:
     return {
         "tools": [
             {"name": tool.name, "description": tool.description, "side_effects": tool.side_effects}
-            for tool in _REGISTRY.values()
+            for tool in get_registry().values()
         ]
     }
 

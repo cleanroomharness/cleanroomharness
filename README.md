@@ -107,6 +107,16 @@ curl -X POST http://localhost:8080/tools/dry-run \
   -d '{"tool": "demo_ticket", "arguments": {"title": "Synthetic demo ticket"}}'
 ```
 
+## MCP server
+
+The harness tools are also available over the [Model Context Protocol](https://modelcontextprotocol.io) for MCP clients like Claude Code and Claude Desktop:
+
+```bash
+make mcp    # stdio server: policy gate + audit + dry-run-first, same as the HTTP API
+```
+
+See [connectors/mcp/README.md](connectors/mcp/README.md) for client configuration.
+
 ## Environment variables
 
 See [.env.example](.env.example). Highlights:
