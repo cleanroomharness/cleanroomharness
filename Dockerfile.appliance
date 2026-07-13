@@ -1,0 +1,65 @@
+# Single-container "appliance" profile.
+#
+# One image containing the harness API (policy gate, audit, retrieval,
+# tools) plus the Ollama model server. Storage is SQLite on a mounted
+# volume — no Postgres, Redis, Qdrant, or LiteLLM processes. The model
+# gateway pattern is unchanged; it points at Ollama's OpenAI-compatible
+# endpoint inside the container.
+#
+# Built on the pinned official Ollama image (Ubuntu 24.04, Python 3.12).
+#
+# Build (connected host):
+#   docker build -f Dockerfile.appliance -t cleanroom-harness-appliance:0.1.0 .
+#
+# Bake model weights into the image for fully self-contained air-gap transfer:
+#   docker build -f Dockerfile.appliance \
+#     --build-arg BAKE_MODEL=llama3.2:3b \
+#     -t cleanroom-harness-appliance:0.1.0 .
+
+ARG OLLAMA_VERSION=0.31.2
+FROM ollama/ollama:${OLLAMA_VERSION}
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+         ca-certificates curl python3 python3-pip \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /srv
+
+COPY requirements.txt .
+RUN pip3 install --no-cache-dir --break-system-packages -r requirements.txt
+
+COPY app ./app
+COPY connectors ./connectors
+COPY prompts ./prompts
+COPY evals ./evals
+COPY scripts/appliance_entrypoint.sh /usr/local/bin/appliance_entrypoint.sh
+RUN chmod +x /usr/local/bin/appliance_entrypoint.sh
+
+# Appliance defaults: SQLite on /data; the "gateway" URL is the in-container
+# Ollama OpenAI-compatible endpoint; model names need no ollama/ prefix.
+ENV ENVIRONMENT=appliance \
+    DATABASE_URL=sqlite:////data/harness.db \
+    LITELLM_BASE_URL=http://127.0.0.1:11434 \
+    DEFAULT_MODEL=llama3.2:3b \
+    OLLAMA_HOST=127.0.0.1:11434 \
+    OLLAMA_MODELS=/models \
+    TOOLS_EXECUTION_ENABLED=false \
+    OTEL_ENABLED=false
+
+# Bake model weights into the image so nothing is fetched at runtime.
+# /models is deliberately NOT declared as a VOLUME: a bind mount over it
+# would shadow baked weights. Mount one only if you load models at runtime.
+ARG BAKE_MODEL=""
+RUN if [ -n "$BAKE_MODEL" ]; then \
+      ollama serve & \
+      i=0; until curl -sf http://127.0.0.1:11434/api/version >/dev/null; do \
+        i=$((i+1)); [ "$i" -gt 30 ] && echo "ollama did not start" && exit 1; sleep 1; \
+      done; \
+      ollama pull "$BAKE_MODEL"; \
+    fi
+
+VOLUME /data
+EXPOSE 8080
+
+ENTRYPOINT ["appliance_entrypoint.sh"]

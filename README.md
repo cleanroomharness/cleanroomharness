@@ -111,9 +111,12 @@ curl -X POST http://localhost:8080/tools/dry-run \
 
 | Tier | How | When |
 |------|-----|------|
+| **Appliance** | `make appliance` | One container with everything: API + Ollama + SQLite. Maximum air-gap portability |
 | **Lean** | `docker compose up --build` | Local development, demos |
 | **K3s** | `make deploy-k3s` | Single node, edge, air-gapped, small regulated environments |
 | **K8s** | `make deploy-k8s` | Multi-node enterprise clusters (EKS/AKS/GKE/on-prem) |
+
+**Appliance profile:** [Dockerfile.appliance](Dockerfile.appliance) packs the harness API, the Ollama model server, and SQLite storage (stdlib, no extra dependencies) into a single image — the model gateway pattern is unchanged, it just points at Ollama's OpenAI-compatible endpoint inside the container. Build with `--build-arg BAKE_MODEL=llama3.2:3b` to bake model weights in, and `make appliance-bundle` produces a one-file checksummed transfer bundle. A single-pod K8s manifest is at [infra/k8s/appliance/appliance.yaml](infra/k8s/appliance/appliance.yaml). Trade-offs: single writer (SQLite), no multi-provider routing, scale-out means the full stack.
 
 The K3s and K8s paths share one kustomize base; overlays differ only in ingress, replicas, and image source. See [infra/k8s/README.md](infra/k8s/README.md) — including the note on replacing the dev-only secret generator before any real deployment.
 

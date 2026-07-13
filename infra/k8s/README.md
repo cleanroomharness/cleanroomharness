@@ -4,6 +4,7 @@ Three deployment tiers, one architecture:
 
 | Tier | Path | When |
 |------|------|------|
+| **Appliance** | `infra/k8s/appliance/appliance.yaml` or `docker-compose.appliance.yml` | One container with everything (API + Ollama + SQLite); maximum air-gap portability |
 | **Lean** | `docker compose up --build` (repo root) | Local development, demos |
 | **K3s** | `infra/k8s/overlays/k3s` | Single node, edge, air-gapped, small regulated environments |
 | **K8s** | `infra/k8s/overlays/k8s` | Multi-node enterprise clusters (EKS/AKS/GKE/on-prem) |
@@ -40,9 +41,14 @@ The stack is built to run fully disconnected:
 - **Transfer bundle.** On a connected host:
 
   ```bash
-  make airgap-bundle   # builds the API image, pulls pinned images,
-                       # saves tarballs + SHA256SUMS + IMPORT.md to dist/airgap/
+  make airgap-bundle      # full stack: API image + pinned service images
+  make appliance-bundle   # single image with model weights baked in
+                          # (both write tarballs + SHA256SUMS + IMPORT.md to dist/airgap/)
   ```
+
+  The appliance bundle is the simplest boundary crossing: one tarball, one
+  `docker load` (or `k3s ctr images import`), zero runtime fetches —
+  `kubectl apply -f infra/k8s/appliance/appliance.yaml` and done.
 
   Carry `dist/airgap/` across the boundary and follow its `IMPORT.md`:
   verify checksums, `k3s ctr images import` (or `docker load` /

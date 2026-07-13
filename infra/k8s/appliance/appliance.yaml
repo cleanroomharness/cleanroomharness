@@ -1,0 +1,98 @@
+# Single-container appliance for Kubernetes/K3s: one pod containing the
+# harness API + Ollama model server, SQLite on a PVC. For air-gapped or
+# minimal-footprint installs where the full base/ stack is more than needed.
+#
+#   kubectl apply -f infra/k8s/appliance/appliance.yaml
+#   kubectl -n cleanroom-harness port-forward svc/appliance 8080:8080
+#
+# Build the image with baked model weights (see Dockerfile.appliance) and
+# import it: docker save cleanroom-harness-appliance:0.1.0 | sudo k3s ctr images import -
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cleanroom-harness
+  labels:
+    app.kubernetes.io/part-of: cleanroom-harness
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: appliance
+  namespace: cleanroom-harness
+  labels:
+    app.kubernetes.io/name: appliance
+    app.kubernetes.io/part-of: cleanroom-harness
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate  # SQLite on a ReadWriteOnce volume: one writer only
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: appliance
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: appliance
+        app.kubernetes.io/part-of: cleanroom-harness
+    spec:
+      containers:
+        - name: appliance
+          image: cleanroom-harness-appliance:0.1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: "1"
+              memory: 4Gi
+            limits:
+              memory: 8Gi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: appliance-data
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: appliance-data
+  namespace: cleanroom-harness
+  labels:
+    app.kubernetes.io/part-of: cleanroom-harness
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: appliance
+  namespace: cleanroom-harness
+  labels:
+    app.kubernetes.io/name: appliance
+    app.kubernetes.io/part-of: cleanroom-harness
+spec:
+  selector:
+    app.kubernetes.io/name: appliance
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http

@@ -7,12 +7,14 @@ schema change. Falls back to an in-memory store when Postgres is unreachable
 so the demo endpoints work without the full stack.
 """
 
+import contextlib
 import hashlib
 import logging
 import uuid
 from datetime import UTC, datetime
 from typing import Any
 
+from app.services import local_store
 from app.settings import get_settings
 
 logger = logging.getLogger("cleanroom.retrieval")
@@ -63,12 +65,15 @@ def _snippet(content: str, query: str, width: int = 240) -> str:
 
 def _insert_db(document: dict[str, Any]) -> bool:
     global _db_available
+    database_url = get_settings().database_url
+    if local_store.is_sqlite_url(database_url):
+        return _insert_sqlite(document, database_url)
     if _db_available is False:
         return False
     try:
         import psycopg
 
-        with psycopg.connect(get_settings().database_url, connect_timeout=2) as conn:
+        with psycopg.connect(database_url, connect_timeout=2) as conn:
             conn.execute(
                 """
                 INSERT INTO documents
@@ -94,6 +99,9 @@ def _insert_db(document: dict[str, Any]) -> bool:
 
 def _search_db(*, tenant_id: str, query: str, top_k: int) -> list[dict[str, Any]] | None:
     global _db_available
+    database_url = get_settings().database_url
+    if local_store.is_sqlite_url(database_url):
+        return _search_sqlite(tenant_id=tenant_id, query=query, top_k=top_k, url=database_url)
     if _db_available is False:
         return None
     try:
@@ -101,7 +109,7 @@ def _search_db(*, tenant_id: str, query: str, top_k: int) -> list[dict[str, Any]
         from psycopg.rows import dict_row
 
         with psycopg.connect(
-            get_settings().database_url, connect_timeout=2, row_factory=dict_row
+            database_url, connect_timeout=2, row_factory=dict_row
         ) as conn:
             rows = conn.execute(
                 """
@@ -125,3 +133,53 @@ def _note_db_down() -> None:
     if _db_available is None:
         logger.warning("retrieval database unavailable; using in-memory demo store")
     _db_available = False
+
+
+def _insert_sqlite(document: dict[str, Any], url: str) -> bool:
+    try:
+        with contextlib.closing(local_store.connect(url)) as conn, conn:
+            conn.execute(
+                """
+                INSERT OR IGNORE INTO documents
+                    (id, tenant_id, source, content, content_hash, created_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    document["id"],
+                    document["tenant_id"],
+                    document["source"],
+                    document["content"],
+                    document["content_hash"],
+                    document["created_at"],
+                ),
+            )
+        return True
+    except Exception:  # noqa: BLE001 - degrade to in-memory demo mode
+        logger.warning("sqlite document store unavailable; using in-memory demo store")
+        return False
+
+
+def _search_sqlite(
+    *, tenant_id: str, query: str, top_k: int, url: str
+) -> list[dict[str, Any]] | None:
+    try:
+        with contextlib.closing(local_store.connect(url)) as conn:
+            conn.row_factory = sqlite3_row_to_dict
+            rows = conn.execute(
+                """
+                SELECT id, tenant_id, source, content, content_hash
+                FROM documents
+                WHERE tenant_id = ? AND content LIKE ?
+                ORDER BY created_at DESC
+                LIMIT ?
+                """,
+                (tenant_id, f"%{query}%", top_k),
+            ).fetchall()
+        return rows
+    except Exception:  # noqa: BLE001 - degrade to in-memory demo mode
+        logger.warning("sqlite document store unavailable; using in-memory demo store")
+        return None
+
+
+def sqlite3_row_to_dict(cursor, row):  # noqa: ANN001 - sqlite3 row_factory signature
+    return {description[0]: row[i] for i, description in enumerate(cursor.description)}

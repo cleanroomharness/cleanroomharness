@@ -1,4 +1,4 @@
-.PHONY: up down logs dev mcp test lint fmt check k8s-validate deploy-k3s deploy-k8s airgap-bundle
+.PHONY: up down logs dev mcp test lint fmt check k8s-validate deploy-k3s deploy-k8s airgap-bundle appliance appliance-bundle
 
 up:
 	docker compose up --build
@@ -41,3 +41,9 @@ deploy-k8s:
 
 airgap-bundle:
 	bash scripts/build_airgap_bundle.sh
+
+appliance:
+	docker compose -f docker-compose.appliance.yml up --build
+
+appliance-bundle:
+	bash scripts/build_airgap_bundle.sh --appliance

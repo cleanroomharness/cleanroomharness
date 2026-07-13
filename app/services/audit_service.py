@@ -6,12 +6,14 @@ database is unreachable (e.g. unit tests, degraded mode) they fall back to
 structured logs so the trail is never silently dropped.
 """
 
+import contextlib
 import json
 import logging
 import uuid
 from datetime import UTC, datetime
 from typing import Any
 
+from app.services import local_store
 from app.settings import get_settings
 
 logger = logging.getLogger("cleanroom.audit")
@@ -54,12 +56,15 @@ def record(
 
 def _write_db(event: dict[str, Any]) -> bool:
     global _db_available
+    database_url = get_settings().database_url
+    if local_store.is_sqlite_url(database_url):
+        return _write_sqlite(event, database_url)
     if _db_available is False:
         return False
     try:
         import psycopg
 
-        with psycopg.connect(get_settings().database_url, connect_timeout=2) as conn:
+        with psycopg.connect(database_url, connect_timeout=2) as conn:
             conn.execute(
                 _INSERT,
                 (
@@ -80,4 +85,32 @@ def _write_db(event: dict[str, Any]) -> bool:
         if _db_available is None:
             logger.warning("audit database unavailable; falling back to log output")
         _db_available = False
+        return False
+
+
+def _write_sqlite(event: dict[str, Any], database_url: str) -> bool:
+    try:
+        with contextlib.closing(local_store.connect(database_url)) as conn, conn:
+            conn.execute(
+                """
+                INSERT INTO audit_events
+                    (id, actor, action, resource_type, resource_id, tenant_id,
+                     policy_decision, reason, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    event["id"],
+                    event["actor"],
+                    event["action"],
+                    event["resource_type"],
+                    event["resource_id"],
+                    event["tenant_id"],
+                    event["policy_decision"],
+                    event["reason"],
+                    event["created_at"],
+                ),
+            )
+        return True
+    except Exception:  # noqa: BLE001 - audit must never take the API down
+        logger.warning("sqlite audit store unavailable; falling back to log output")
         return False

@@ -1,0 +1,27 @@
+# Single-container appliance: API + policy gate + audit + retrieval (SQLite)
+# + Ollama model server, all in one box.
+#
+#   docker compose -f docker-compose.appliance.yml up --build
+#
+# Air-gapped hosts: load the appliance image from the transfer bundle, then
+#   docker compose -f docker-compose.appliance.yml up --no-build
+services:
+  appliance:
+    image: cleanroom-harness-appliance:0.1.0
+    build:
+      context: .
+      dockerfile: Dockerfile.appliance
+      # Bake model weights into the image (build on a connected host):
+      # args:
+      #   BAKE_MODEL: llama3.2:3b
+    init: true
+    ports:
+      - "8080:8080"
+    volumes:
+      - appliancedata:/data
+      # Only when loading models at runtime instead of baking them in
+      # (a mount over /models shadows baked weights):
+      # - appliancemodels:/models
+
+volumes:
+  appliancedata:
